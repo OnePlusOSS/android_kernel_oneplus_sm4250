@@ -22,6 +22,8 @@
 #include <drm/drmP.h>
 #include "drm_internal.h"
 
+#include <soc/oneplus/device_info.h>
+
 #define to_drm_minor(d) dev_get_drvdata(d)
 #define to_drm_connector(d) dev_get_drvdata(d)
 
@@ -229,16 +231,39 @@ static ssize_t modes_show(struct device *device,
 	return written;
 }
 
+/* *
+ * in fact, it's not right and can't differentiate 20882 and 20883, but our hardware engineer
+ * said there is no way to differentiate, so we just get the stage. default all is match. Just
+ * create a interface, for someone to modify it sometime.
+ */
+static ssize_t panel_mismatch_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	//struct drm_connector *connector = to_drm_connector(dev);
+	int ret = 0;
+	int wrong_panel = 0;
+
+	wrong_panel = current_version != 0 ? 0 : 1;
+	ret = scnprintf(buf, PAGE_SIZE, "panel mismatch = %d\n"
+			"0--(panel match)\n"
+			"1--(panel mismatch)\n",
+			wrong_panel);
+	return ret;
+}
+
 static DEVICE_ATTR_RW(status);
 static DEVICE_ATTR_RO(enabled);
 static DEVICE_ATTR_RO(dpms);
 static DEVICE_ATTR_RO(modes);
+static DEVICE_ATTR_RO(panel_mismatch);
 
 static struct attribute *connector_dev_attrs[] = {
 	&dev_attr_status.attr,
 	&dev_attr_enabled.attr,
 	&dev_attr_dpms.attr,
 	&dev_attr_modes.attr,
+	&dev_attr_panel_mismatch.attr,
+	&dev_attr_cabc.attr,
 	NULL
 };
 

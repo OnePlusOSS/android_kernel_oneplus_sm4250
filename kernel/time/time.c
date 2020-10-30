@@ -852,6 +852,7 @@ struct timespec64 timespec64_add_safe(const struct timespec64 lhs,
 
 	return res;
 }
+EXPORT_SYMBOL(timespec64_add_safe);
 
 int get_timespec64(struct timespec64 *ts,
 		   const struct __kernel_timespec __user *uts)

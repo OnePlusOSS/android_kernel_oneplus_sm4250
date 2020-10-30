@@ -54,7 +54,31 @@ enum pon_restart_reason {
 	PON_RESTART_REASON_DMVERITY_CORRUPTED	= 0x04,
 	PON_RESTART_REASON_DMVERITY_ENFORCE	= 0x05,
 	PON_RESTART_REASON_KEYS_CLEAR		= 0x06,
+
+	PON_RESTART_REASON_AGING                = 0x21,
+	PON_RESTART_REASON_REBOOT               = 0x22,
+	PON_RESTART_REASON_FACTORY              = 0x23,
+	PON_RESTART_REASON_RF                   = 0x24,
+	PON_RESTART_REASON_KERNEL               = 0x25,
+	PON_RESTART_REASON_ANDROID              = 0x26,
+	PON_RESTART_REASON_MODEM                = 0x27,
+	PON_RESTART_REASON_CHARGER              = 0x28,
+	//dylan.chang@BSP.AgingTest, 2019/01/07,Add for factory agingtest
+	PON_RESTART_REASON_SBL_DDRTEST	= 0x2A,
+	PON_RESTART_REASON_SBL_DDR_CUS	= 0x2B,
+	PON_RESTART_REASON_MEM_AGING	= 0x2C
+	//0x2E is SBLTEST FAIL, just happen in ddrtest fail when xbl setup
+
 };
+
+/* Define OEM reboot mode magic*/
+#define AGING_MODE      0x77665510
+#define FACTORY_MODE    0x77665504
+#define RF_MODE         0x77665506
+#define KERNEL_MODE     0x7766550d
+#define ANDROID_MODE    0x7766550c
+#define MODEM_MODE      0x7766550b
+#define OEM_PANIC       0x77665518
 
 #ifdef CONFIG_INPUT_QPNP_POWER_ON
 int qpnp_pon_system_pwr_off(enum pon_power_off_type type);
@@ -64,6 +88,13 @@ int qpnp_pon_wd_config(bool enable);
 int qpnp_pon_set_restart_reason(enum pon_restart_reason reason);
 bool qpnp_pon_check_hard_reset_stored(void);
 int qpnp_pon_modem_pwr_off(enum pon_power_off_type type);
+
+#ifdef CONFIG_KEY_FLUSH
+extern int panic_flush_device_cache(int timeout);
+extern void panic_flush_device_cache_circled_on(void);
+extern void panic_flush_device_cache_circled_off(void);
+#endif
+
 
 #else
 

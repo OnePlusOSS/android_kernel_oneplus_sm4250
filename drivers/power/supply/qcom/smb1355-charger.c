@@ -171,7 +171,7 @@
 	 || (mode == POWER_SUPPLY_PL_USBIN_USBIN_EXT))
 
 #define PARALLEL_ENABLE_VOTER			"PARALLEL_ENABLE_VOTER"
-
+static int factory_test_lock;
 struct smb_chg_param {
 	const char	*name;
 	u16		reg;
@@ -373,6 +373,9 @@ static int smb1355_set_charge_param(struct smb1355 *chip,
 		pr_err("%s: %d is out of range [%d, %d]\n",
 			param->name, val_u, param->min_u, param->max_u);
 		return -EINVAL;
+	} else {
+		pr_info("%s: %d is in range [%d, %d]\n",
+		param->name, val_u, param->min_u, param->max_u);
 	}
 
 	val_raw = (val_u - param->min_u) / param->step_u;
@@ -567,6 +570,7 @@ static enum power_supply_property smb1355_parallel_props[] = {
 	POWER_SUPPLY_PROP_CURRENT_MAX,
 	POWER_SUPPLY_PROP_SET_SHIP_MODE,
 	POWER_SUPPLY_PROP_DIE_HEALTH,
+	POWER_SUPPLY_PROP_SMB1355_TEST,
 };
 
 static int smb1355_get_prop_batt_charge_type(struct smb1355 *chip,
@@ -843,6 +847,9 @@ static int smb1355_parallel_get_prop(struct power_supply *psy,
 		/* Not in ship mode as long as device is active */
 		val->intval = 0;
 		break;
+	case POWER_SUPPLY_PROP_SMB1355_TEST:
+		val->intval = factory_test_lock;
+		break;
 	default:
 		pr_err_ratelimited("parallel psy get prop %d not supported\n",
 			prop);
@@ -981,14 +988,16 @@ static int smb1355_parallel_set_prop(struct power_supply *psy,
 		rc = smb1355_set_parallel_charging(chip, (bool)val->intval);
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_MAX:
-		rc = smb1355_set_current_max(chip, val->intval);
+		if (factory_test_lock == 0)
+			rc = smb1355_set_current_max(chip, val->intval);
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
 		rc = smb1355_set_charge_param(chip, &chip->param.ov,
 						val->intval);
 		break;
 	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT_MAX:
-		rc = smb1355_set_charge_param(chip, &chip->param.fcc,
+		if (factory_test_lock == 0)
+			rc = smb1355_set_charge_param(chip, &chip->param.fcc,
 						val->intval);
 		break;
 	case POWER_SUPPLY_PROP_CONNECTOR_HEALTH:
@@ -1001,6 +1010,23 @@ static int smb1355_parallel_set_prop(struct power_supply *psy,
 		if (!val->intval)
 			break;
 		rc = smb1355_clk_request(chip, false);
+		break;
+	case POWER_SUPPLY_PROP_SMB1355_TEST:
+		if (val->intval == 1) {
+			factory_test_lock = 1;
+			rc = smb1355_set_charge_param(chip, &chip->param.fcc, 1000000);
+			rc = smb1355_set_charge_param(chip, &chip->param.usb_icl, 1000000);
+			rc = smb1355_masked_write(chip, CHGR_CFG2_REG, CHG_EN_POLARITY_BIT | CHG_EN_SRC_BIT, 0);
+			rc = smb1355_masked_write(chip, CHGR_CHARGING_ENABLE_CMD_REG,
+							CHARGING_ENABLE_CMD_BIT, CHARGING_ENABLE_CMD_BIT);
+		} else if (val->intval == 0) {
+			rc = smb1355_set_charge_param(chip, &chip->param.fcc, 0);
+			rc = smb1355_set_charge_param(chip, &chip->param.usb_icl, 0);
+			rc = smb1355_masked_write(chip, CHGR_CFG2_REG, CHG_EN_POLARITY_BIT | CHG_EN_SRC_BIT, 0);
+			rc = smb1355_masked_write(chip, CHGR_CHARGING_ENABLE_CMD_REG, CHARGING_ENABLE_CMD_BIT, 0);
+			factory_test_lock = 0;
+		}
+		pr_err("factory_test_lock = %d\n", factory_test_lock);
 		break;
 	default:
 		pr_debug("parallel power supply set prop %d not supported\n",
@@ -1017,6 +1043,7 @@ static int smb1355_parallel_prop_is_writeable(struct power_supply *psy,
 {
 	switch (prop) {
 	case POWER_SUPPLY_PROP_CONNECTOR_HEALTH:
+	case POWER_SUPPLY_PROP_SMB1355_TEST:
 		return 1;
 	default:
 		break;

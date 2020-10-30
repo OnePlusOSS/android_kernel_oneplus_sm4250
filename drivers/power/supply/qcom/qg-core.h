@@ -6,6 +6,12 @@
 #ifndef __QG_CORE_H__
 #define __QG_CORE_H__
 
+#define qg_debug(fmt, ...) \
+        printk(KERN_NOTICE "[ONEPLUS_CHG][%s]"fmt, __func__, ##__VA_ARGS__)
+
+#define qg_err(fmt, ...) \
+        printk(KERN_ERR "[ONEPLUS_CHG][%s]"fmt, __func__, ##__VA_ARGS__)
+
 #include <linux/kernel.h>
 #include "fg-alg.h"
 #include "qg-defs.h"
@@ -140,6 +146,7 @@ struct qpnp_qg {
 	bool			charge_full;
 	bool			force_soc;
 	bool			fvss_active;
+	bool			enable_qpnp_qg;
 	bool			tcss_active;
 	bool			bass_active;
 	int			charge_status;
@@ -177,6 +184,7 @@ struct qpnp_qg {
 	unsigned long		suspend_time;
 	struct iio_channel	*batt_therm_chan;
 	struct iio_channel	*batt_id_chan;
+	struct iio_channel	*parallel_isense_chan;
 
 	/* soc params */
 	int			catch_up_soc;
@@ -202,6 +210,24 @@ struct qpnp_qg {
 	struct cycle_counter	*counter;
 	/* ttf */
 	struct ttf		*ttf;
+            
+	int         skip_scale_soc_count;
+	int			atl_4_45_battery_id_low;
+	int			atl_4_45_battery_id_high;
+	int			atl_4_4_battery_id_low;
+	int			atl_4_4_battery_id_high;
+	int			sdi_4_45_battery_id_low;
+	int			sdi_4_45_battery_id_high;
+	int			sdi_4_4_battery_id_low;
+	int			sdi_4_4_battery_id_high;
+	int			lw_battery_id_low;
+	int			lw_battery_id_high;
+	int			cl_battery_id_low;
+	int			cl_battery_id_high;
+    int				batt_info[6];
+    int				batt_info_id;
+    bool			*batt_range_ocv;
+    int				*batt_range_pct;
 };
 
 struct ocv_all {

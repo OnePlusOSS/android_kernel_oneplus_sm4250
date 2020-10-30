@@ -535,7 +535,7 @@ static int qusb_phy_init(struct usb_phy *phy)
 	 * and try to read EFUSE value only once i.e. not every USB
 	 * cable connect case.
 	 */
-	if (qphy->tune2_efuse_reg && !qphy->tune2) {
+	if (qphy->tune2_efuse_reg && !qphy->tune2 && !qphy->qusb_phy_init_seq) {
 		if (!qphy->tune2_val)
 			qusb_phy_get_tune2_param(qphy);
 
@@ -802,86 +802,6 @@ static int qusb_phy_notify_disconnect(struct usb_phy *phy,
 
 	dev_dbg(phy->dev, "QUSB PHY: connect notification cable_connected=%d\n",
 							qphy->cable_connected);
-	return 0;
-}
-
-static int qusb_phy_drive_dp_pulse(struct usb_phy *phy,
-						unsigned int pulse_width)
-{
-	struct qusb_phy *qphy = container_of(phy, struct qusb_phy, phy);
-	int ret;
-
-	dev_dbg(qphy->phy.dev, "connected to a CDP, drive DP up\n");
-	ret = qusb_phy_enable_power(qphy, true);
-	if (ret < 0) {
-		dev_dbg(qphy->phy.dev,
-			"dpdm regulator enable failed:%d\n", ret);
-		return ret;
-	}
-	qusb_phy_gdsc(qphy, true);
-	qusb_phy_enable_clocks(qphy, true);
-
-	ret = reset_control_assert(qphy->phy_reset);
-	if (ret)
-		dev_err(qphy->phy.dev, "phyassert failed\n");
-	usleep_range(100, 150);
-	ret = reset_control_deassert(qphy->phy_reset);
-	if (ret)
-		dev_err(qphy->phy.dev, "deassert failed\n");
-
-	/* Configure PHY to enable control on DP/DM lines */
-	writel_relaxed(CLAMP_N_EN | FREEZIO_N | POWER_DOWN,
-				qphy->base + QUSB2PHY_PORT_POWERDOWN);
-
-	writel_relaxed(TERM_SELECT | XCVR_SELECT_FS | OP_MODE_NON_DRIVE |
-			SUSPEND_N, qphy->base + QUSB2PHY_PORT_UTMI_CTRL1);
-
-	writel_relaxed(UTMI_ULPI_SEL | UTMI_TEST_MUX_SEL,
-				qphy->base + QUSB2PHY_PORT_UTMI_CTRL2);
-
-	writel_relaxed(PLL_RESET_N_CNT_5,
-			qphy->base + QUSB2PHY_PLL_AUTOPGM_CTL1);
-
-	writel_relaxed(CLAMP_N_EN | FREEZIO_N,
-			qphy->base + QUSB2PHY_PORT_POWERDOWN);
-
-	writel_relaxed(REF_BUF_EN | REXT_EN | PLL_BYPASSNL | REXT_TRIM_0,
-			qphy->base + QUSB2PHY_PLL_PWR_CTL);
-
-	usleep_range(5, 10);
-
-	writel_relaxed(0x15, qphy->base + QUSB2PHY_PLL_AUTOPGM_CTL1);
-	writel_relaxed(PLL_RESET_N | PLL_RESET_N_CNT_5,
-			qphy->base + QUSB2PHY_PLL_AUTOPGM_CTL1);
-
-	writel_relaxed(0x00, qphy->base + QUSB2PHY_PORT_QC1);
-	writel_relaxed(0x00, qphy->base + QUSB2PHY_PORT_QC2);
-
-	usleep_range(50, 60);
-	/* Enable Rdp_en to pull DP up to 3V */
-	writel_relaxed(RDP_UP_EN, qphy->base + QUSB2PHY_PORT_QC2);
-	msleep(pulse_width);
-
-	/* Put the PHY and DP back to normal state */
-	writel_relaxed(CLAMP_N_EN | FREEZIO_N | POWER_DOWN,
-			qphy->base + QUSB2PHY_PORT_POWERDOWN);  /* 23 */
-
-	writel_relaxed(PLL_AUTOPGM_EN | PLL_RESET_N | PLL_RESET_N_CNT_5,
-			qphy->base + QUSB2PHY_PLL_AUTOPGM_CTL1);
-
-	writel_relaxed(UTMI_ULPI_SEL, qphy->base + QUSB2PHY_PORT_UTMI_CTRL2);
-
-	writel_relaxed(TERM_SELECT, qphy->base + QUSB2PHY_PORT_UTMI_CTRL1);
-
-	qusb_phy_enable_clocks(qphy, false);
-	qusb_phy_gdsc(qphy, false);
-
-	ret = qusb_phy_enable_power(qphy, false);
-	if (ret < 0) {
-		dev_dbg(qphy->phy.dev,
-			"dpdm regulator disable failed:%d\n", ret);
-		return ret;
-	}
 	return 0;
 }
 
@@ -1759,7 +1679,6 @@ static int qusb_phy_probe(struct platform_device *pdev)
 	qphy->phy.type			= USB_PHY_TYPE_USB2;
 	qphy->phy.notify_connect        = qusb_phy_notify_connect;
 	qphy->phy.notify_disconnect     = qusb_phy_notify_disconnect;
-	qphy->phy.drive_dp_pulse	= qusb_phy_drive_dp_pulse;
 
 	/*
 	 * On some platforms multiple QUSB PHYs are available. If QUSB PHY is

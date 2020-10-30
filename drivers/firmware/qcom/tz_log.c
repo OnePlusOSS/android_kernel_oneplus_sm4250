@@ -10,6 +10,7 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
+#include <linux/proc_fs.h>
 #include <linux/slab.h>
 #include <linux/string.h>
 #include <linux/types.h>
@@ -23,7 +24,9 @@
 #include <soc/qcom/qtee_shmbridge.h>
 
 /* QSEE_LOG_BUF_SIZE = 32K */
-#define QSEE_LOG_BUF_SIZE 0x8000
+//add by wangjiaxing to add qsee_log/tz_log for logkit on 20200811.1850 start
+#define QSEE_LOG_BUF_SIZE 0x10000
+//add by wangjiaxing to add qsee_log/tz_log for logkit on 20200811.1850 end
 
 
 /* TZ Diagnostic Area legacy version number */
@@ -1008,6 +1011,102 @@ static void tzdbg_get_tz_version(void)
 
 }
 
+//add by wangjiaxing to add qsee_log/tz_log for logkit on 20200811.1850 start
+static ssize_t proc_qsee_log_func(struct file *file, char __user *user_buf,
+					size_t count, loff_t *ppos)
+{
+	int len = 0;
+
+	memcpy_fromio((void *)tzdbg.diag_buf, tzdbg.virt_iobase,
+						debug_rw_buf_size);
+	memcpy_fromio((void *)tzdbg.hyp_diag_buf, tzdbg.hyp_virt_iobase,
+					tzdbg.hyp_debug_rw_buf_size);
+	len = _disp_qsee_log_stats(count);
+	*ppos = 0;
+
+	if (len > count)
+		len = count;
+
+	return simple_read_from_buffer(user_buf, len, ppos,
+				tzdbg.stat[6].data, len);
+}
+
+
+static const struct file_operations proc_qsee_log_fops = {
+	.read =  proc_qsee_log_func,
+	.open = simple_open,
+	.owner = THIS_MODULE,
+};
+
+static ssize_t proc_tz_log_func(struct file *file, char __user *user_buf,
+				size_t count, loff_t *ppos)
+{
+	int len = 0;
+
+	memcpy_fromio((void *)tzdbg.diag_buf, tzdbg.virt_iobase,
+						debug_rw_buf_size);
+	memcpy_fromio((void *)tzdbg.hyp_diag_buf, tzdbg.hyp_virt_iobase,
+					tzdbg.hyp_debug_rw_buf_size);
+
+	if (TZBSP_DIAG_MAJOR_VERSION_LEGACY <
+			(tzdbg.diag_buf->version >> 16)) {
+		len = _disp_tz_log_stats(count);
+		*ppos = 0;
+	} else {
+		len = _disp_tz_log_stats_legacy();
+	}
+
+	if (len > count)
+		len = count;
+
+	return simple_read_from_buffer(user_buf, len, ppos,
+			tzdbg.stat[5].data, len);
+}
+
+static const struct file_operations proc_tz_log_fops = {
+	.read =  proc_tz_log_func,
+	.open = simple_open,
+	.owner = THIS_MODULE,
+};
+
+static int tzprocfs_init(struct platform_device *pdev)
+{
+	int rc = 0;
+	struct proc_dir_entry *prEntry_tmp  = NULL;
+	struct proc_dir_entry *prEntry_dir  = NULL;
+
+	prEntry_dir = proc_mkdir("tzdbg", NULL);
+
+	if (prEntry_dir == NULL) {
+		dev_err(&pdev->dev, "tzdbg procfs_create_dir failed\n");
+		return -ENOMEM;
+	}
+
+	prEntry_tmp = proc_create("qsee_log", 0666,
+					prEntry_dir, &proc_qsee_log_fops);
+
+	if (prEntry_tmp  == NULL) {
+		dev_err(&pdev->dev, "TZ procfs_create_file qsee_log failed\n");
+		rc = -ENOMEM;
+		goto err;
+	}
+
+	prEntry_tmp = proc_create("tz_log", 0666,
+					prEntry_dir, &proc_tz_log_fops);
+
+	if (prEntry_tmp  == NULL) {
+		dev_err(&pdev->dev, "TZ procfs_create_file tz_log failed\n");
+		rc = -ENOMEM;
+		goto err;
+	}
+
+	return 0;
+err:
+	proc_remove(prEntry_dir);
+
+	return rc;
+}
+//add by wangjiaxing to add qsee_log/tz_log for logkit on 20200811.1850 end
 /*
  * Driver functions
  */
@@ -1091,6 +1190,10 @@ static int tz_log_probe(struct platform_device *pdev)
 
 	if (tzdbgfs_init(pdev))
 		goto err;
+//add by wangjiaxing to add qsee_log/tz_log for logkit on 20200811.1850 start
+	if (tzprocfs_init(pdev))
+		goto err;
+//add by wangjiaxing to add qsee_log/tz_log for logkit on 20200811.1850 end
 
 	tzdbg_register_qsee_log_buf(pdev);
 

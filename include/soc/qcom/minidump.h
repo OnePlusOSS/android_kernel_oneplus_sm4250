@@ -6,7 +6,7 @@
 #ifndef __MINIDUMP_H
 #define __MINIDUMP_H
 
-#define MAX_NAME_LENGTH		12
+#define MAX_NAME_LENGTH		15
 
 /* default value for clients not using any id */
 #define MINIDUMP_DEFAULT_ID	UINT_MAX

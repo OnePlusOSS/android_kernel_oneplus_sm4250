@@ -74,3 +74,6 @@ obj-$(CONFIG_OKL4_LINK_SHBUF)    += okl4-link-shbuf.o
 obj-$(CONFIG_WIGIG_SENSING_SPI)	+= wigig_sensing.o
 obj-$(CONFIG_QTI_XR_SMRTVWR_MISC) += qxr-stdalonevwr.o
 obj-$(CONFIG_FPR_FPC)		+= fpr_FingerprintCard/
+obj-$(CONFIG_FP_ET520) += et520/
+#zuoqiquan@BSP.CHG.Basic 2020/6/13 modify for rf cable monitor
+obj-y	+= oneplus_rf_cable_monitor.o

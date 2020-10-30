@@ -135,11 +135,14 @@ menu "DOS/FAT/NT Filesystems"
 source "fs/fat/Kconfig"
 source "fs/ntfs/Kconfig"
 
+source "fs/exfat/Kconfig"
+
 endmenu
 endif # BLOCK
 
 menu "Pseudo filesystems"
 
+source "drivers/oneplus/fs/proc/Kconfig"
 source "fs/proc/Kconfig"
 source "fs/kernfs/Kconfig"
 source "fs/sysfs/Kconfig"

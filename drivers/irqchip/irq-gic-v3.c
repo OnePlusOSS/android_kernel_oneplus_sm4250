@@ -41,8 +41,12 @@
 #include <asm/virt.h>
 
 #include <linux/syscore_ops.h>
+/* Add for battery historian */
+#include <linux/wakeup_reason.h>
 
 #include "irq-gic-common.h"
+
+int qrtr_first_msg;
 
 struct redist_region {
 	void __iomem		*redist_base;
@@ -371,7 +375,12 @@ static void gic_show_resume_irq(struct gic_chip_data *gic)
 		else if (desc->action && desc->action->name)
 			name = desc->action->name;
 
+		/* Add for battery historian */
+		if (name != NULL)
+			log_wakeup_reason(irq);
+
 		pr_warn("%s: %d triggered %s\n", __func__, irq, name);
+		qrtr_first_msg = 1; //You could try filter out the irq name by yourself.
 	}
 }
 
@@ -1027,8 +1036,15 @@ static int gic_irq_domain_translate(struct irq_domain *d,
 		 * Make it clear that broken DTs are... broken.
 		 * Partitionned PPIs are an unfortunate exception.
 		 */
-		WARN_ON(*type == IRQ_TYPE_NONE &&
-			fwspec->param[0] != GIC_IRQ_TYPE_PARTITION);
+		/*
+		 * Once in dtsi, the interrupts = <xx yy zz>, if the third number is 0
+		 * Here will print one WARNING msg, so if we want to delete the WARNING log
+		 * in dmesg, we must change the code without change dtsi
+		 */
+		if (*type == IRQ_TYPE_NONE &&
+			fwspec->param[0] != GIC_IRQ_TYPE_PARTITION)
+			pr_info("Not triggering for this IRQ1\n");
+
 		return 0;
 	}
 
@@ -1039,7 +1055,14 @@ static int gic_irq_domain_translate(struct irq_domain *d,
 		*hwirq = fwspec->param[0];
 		*type = fwspec->param[1];
 
-		WARN_ON(*type == IRQ_TYPE_NONE);
+		/*
+		 * Once in dtsi, the interrupts = <xx yy zz>, if the third number is 0
+		 * Here will print one WARNING msg, so if we want to delete the WARNING log
+		 * in dmesg, we must change the code without change dtsi
+		 */
+		if (*type == IRQ_TYPE_NONE)
+			pr_info("Not triggering for this IRQ2\n");
+
 		return 0;
 	}
 

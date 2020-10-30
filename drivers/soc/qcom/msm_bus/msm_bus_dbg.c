@@ -906,8 +906,14 @@ static int __init msm_bus_debugfs_init(void)
 				MSM_BUS_DBG("Client name not found\n");
 				continue;
 			}
-			cldata->file = msm_bus_dbg_create(cldata->pdata->name,
+			// zyh@bsp temp fix crash for bootup crash
+			if ((unsigned long long)(cldata->pdata->name)&0xFFFF000000000000) {
+				cldata->file = msm_bus_dbg_create(cldata->pdata->name,
 					0444, clients, cldata->clid);
+			} else {
+				pr_err("%s cldata:%p cldata->pdata:%p cldata->pdata->name:%p clients::%p cldata->clid:%d\n",
+					__func__, cldata, cldata->pdata, cldata->pdata->name, clients, cldata->clid);
+			}
 		} else if (cldata->handle) {
 			if (cldata->handle->name == NULL) {
 				MSM_BUS_DBG("Client doesn't have a name\n");

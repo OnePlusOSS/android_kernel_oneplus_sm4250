@@ -1341,6 +1341,15 @@ config TPS6105X
 	  sometimes used for other things than white LEDs, and
 	  also contains a GPIO pin.
 
+config HPUE_TPS61280
+	bool "TI TPS61280 Boost Converters"
+	default n
+	help
+	  This option enables a driver for the TP61280
+	  high-power terminal. This boost converter is
+	  used for enhance signal transmission power, and
+	  also contains a GPIO pin.
+
 config TPS65010
 	tristate "TI TPS6501x Power Management chips"
 	depends on I2C && GPIOLIB

@@ -1,0 +1,6 @@
+config ONEPLUS_DEVICE_IFNO
+  bool "config oneplus devinfo software"
+  default y
+  help
+    define this config to compile devinfo.c for device register
+

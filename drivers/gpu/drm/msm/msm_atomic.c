@@ -91,7 +91,7 @@ void msm_atomic_commit_tail(struct drm_atomic_state *state)
 }
 int msm_drm_register_client(struct notifier_block *nb)
 {
-	return 0;
+	return blocking_notifier_chain_register(&msm_drm_notifier_list,nb);
 }
 EXPORT_SYMBOL(msm_drm_register_client);
 

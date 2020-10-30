@@ -44,6 +44,7 @@ enum {
 	DRM_PANEL_BLANK_FPS_CHANGE,
 };
 
+
 struct drm_panel_notifier {
 	int refresh_rate;
 	void *data;

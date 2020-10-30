@@ -7,6 +7,7 @@
 #define __SCHGM_FLASH_H__
 
 #include <linux/bitops.h>
+#include "../../oneplus/charger_ic/oneplus_battery_pmi632.h"
 
 #define SCHGM_FLASH_BASE			0xA600
 

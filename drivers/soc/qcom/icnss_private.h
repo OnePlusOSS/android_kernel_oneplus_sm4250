@@ -105,6 +105,7 @@ extern uint64_t dynamic_feature_mask;
 extern void *icnss_ipc_log_context;
 extern void *icnss_ipc_log_long_context;
 extern unsigned long quirks;
+extern int dual_sim;
 
 enum icnss_driver_event_type {
 	ICNSS_DRIVER_EVENT_SERVER_ARRIVE,

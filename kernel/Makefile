@@ -51,6 +51,8 @@ obj-y += irq/
 obj-y += rcu/
 obj-y += livepatch/
 obj-y += dma/
+obj-$(CONFIG_ONEPLUS_KEVENT_UPLOAD) += oneplus_kevent_upload.o
+obj-$(CONFIG_ONEPLUS_KEVENT_TEST) += oneplus_kevent_test.o
 
 obj-$(CONFIG_CHECKPOINT_RESTORE) += kcmp.o
 obj-$(CONFIG_FREEZER) += freezer.o

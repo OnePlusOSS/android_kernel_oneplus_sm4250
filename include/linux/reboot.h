@@ -87,4 +87,6 @@ extern void orderly_reboot(void);
 extern void emergency_restart(void);
 #include <asm/emergency-restart.h>
 
+extern int shutdown_flag;
+
 #endif /* _LINUX_REBOOT_H */

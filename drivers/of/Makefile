@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: GPL-2.0
+#KBUILD_CFLAGS += -DT0_ERROR_BATT_SUPPORT
 obj-y = base.o device.o platform.o property.o
 obj-$(CONFIG_OF_KOBJ) += kobj.o
 obj-$(CONFIG_OF_DYNAMIC) += dynamic.o

@@ -570,8 +570,14 @@ static void msm_gpio_dbg_show(struct seq_file *s, struct gpio_chip *chip)
 	unsigned gpio = chip->base;
 	unsigned i;
 
-	for (i = 0; i < chip->ngpio; i++, gpio++)
+	seq_puts(s, " name    dir  val fun   drv pull \n");
+
+	for (i = 0; i < chip->ngpio; i++, gpio++) {
+
+		if (i == 14 || i == 15 || i == 16 || i == 17)
+			continue;
 		msm_gpio_dbg_show_one(s, NULL, chip, i, gpio);
+	}
 }
 
 #else

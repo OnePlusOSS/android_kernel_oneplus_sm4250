@@ -25,7 +25,7 @@
 
 /* Vibrator-LDO voltage settings */
 #define QPNP_VIB_LDO_VMIN_UV		1504000
-#define QPNP_VIB_LDO_VMAX_UV		3544000
+#define QPNP_VIB_LDO_VMAX_UV		3000000
 #define QPNP_VIB_LDO_VOLT_STEP_UV	8000
 
 /*
@@ -349,22 +349,34 @@ static ssize_t qpnp_vib_store_vmax(struct device *dev,
 	struct led_classdev *cdev = dev_get_drvdata(dev);
 	struct vib_ldo_chip *chip = container_of(cdev, struct vib_ldo_chip,
 						cdev);
-	int data, ret;
+	u32 val;
+	int ret;
 
-	ret = kstrtoint(buf, 10, &data);
+	ret = kstrtouint(buf, 10, &val);
 	if (ret < 0)
 		return ret;
 
-	data = data * 1000; /* Convert to microvolts */
+	if (val <= 0)
+		return count;
+
+	val = val * 1000; /* Convert to microvolts */
 
 	/* check against vibrator ldo min/max voltage limits */
-	data = min(data, QPNP_VIB_LDO_VMAX_UV);
-	data = max(data, QPNP_VIB_LDO_VMIN_UV);
+	if (val < QPNP_VIB_LDO_VMIN_UV)
+		val = QPNP_VIB_LDO_VMIN_UV;
 
+	if (val > QPNP_VIB_LDO_VMAX_UV)
+		val = QPNP_VIB_LDO_VMAX_UV;
+
+	// set default vol 3000000 for N1 project.
+	val = QPNP_VIB_LDO_VMAX_UV;
+
+	pr_err("store vibr voltage:%duV\n", val);
 	mutex_lock(&chip->lock);
-	chip->vmax_uV = data;
+	chip->vmax_uV = val;
 	mutex_unlock(&chip->lock);
-	return ret;
+
+	return count;
 }
 
 static struct device_attribute qpnp_vib_attrs[] = {

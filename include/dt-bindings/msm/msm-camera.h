@@ -72,4 +72,5 @@
 #define CAM_CPAS_ISP_PIX_FUSE_ID            3
 #define CAM_CPAS_FUSE_FEATURE_MAX           4
 
+#define CAM_CPAS_FEATURE_TYPE_DISABLE        0
 #endif

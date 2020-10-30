@@ -182,7 +182,7 @@ int msm_minidump_add_region(const struct md_region *entry)
 
 	spin_lock(&mdt_lock);
 	if (md_entry_num(entry) >= 0) {
-		pr_err("Entry name already exist.\n");
+		pr_err("Entry name already exist. name is : %s\n", entry->name);
 		spin_unlock(&mdt_lock);
 		return -EINVAL;
 	}

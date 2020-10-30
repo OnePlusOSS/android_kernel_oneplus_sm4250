@@ -524,6 +524,10 @@ void page_cache_sync_readahead(struct address_space *mapping,
 		return;
 	}
 
+#ifdef CONFIG_MEMPLUS
+	count_vm_event(PGCACHEMISS);
+#endif
+
 	/* do read-ahead */
 	ondemand_readahead(mapping, ra, filp, false, offset, req_size);
 }

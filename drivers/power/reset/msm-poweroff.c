@@ -186,6 +186,16 @@ static bool get_dload_mode(void)
 	return dload_mode_enabled;
 }
 
+void oem_force_minidump_mode(void)
+{
+	if (dload_type == SCM_DLOAD_FULLDUMP) {
+		pr_err("force minidump mode\n");
+		dload_type = SCM_DLOAD_MINIDUMP;
+		set_dload_mode(dload_type);
+		__raw_writel(EMMC_DLOAD_TYPE, dload_type_addr);
+	}
+}
+
 static void enable_emergency_dload_mode(void)
 {
 	int ret;
@@ -520,6 +530,25 @@ static void msm_restart_prepare(const char *cmd)
 			qpnp_pon_set_restart_reason(
 				PON_RESTART_REASON_KEYS_CLEAR);
 			__raw_writel(0x7766550a, restart_reason);
+		//dylan.chang@BSP.TECH.AgingTest, 2019/01/07,Add for factory agingtest
+		} else if (!strcmp(cmd, "sbllowmemtest")) {
+			pr_info("[op aging mem test] lunch ddr sbllowmemtest!!comm: %s, pid: %d\n"
+				, current->comm, current->pid);
+			qpnp_pon_set_restart_reason(
+					PON_RESTART_REASON_SBL_DDR_CUS);
+			__raw_writel(0x7766550b, restart_reason);
+		} else if (!strcmp(cmd, "sblmemtest")) {//op factory aging test
+			pr_info("[op aging mem test] lunch ddr sblmemtest!!comm: %s, pid: %d\n"
+				, current->comm, current->pid);
+			qpnp_pon_set_restart_reason(
+					PON_RESTART_REASON_SBL_DDRTEST);
+			__raw_writel(0x7766550b, restart_reason);
+		} else if (!strcmp(cmd, "usermemaging")) {
+			pr_info("[op aging mem test] lunch ddr usermemaging!!comm: %s, pid: %d\n"
+				, current->comm, current->pid);
+			qpnp_pon_set_restart_reason(
+					PON_RESTART_REASON_MEM_AGING);
+			__raw_writel(0x7766550b, restart_reason);
 		} else if (!strncmp(cmd, "oem-", 4)) {
 			unsigned long code;
 			int ret;
@@ -530,11 +559,28 @@ static void msm_restart_prepare(const char *cmd)
 					     restart_reason);
 		} else if (!strncmp(cmd, "edl", 3)) {
 			enable_emergency_dload_mode();
+		} else if (!strncmp(cmd, "rf", 2)) {
+			qpnp_pon_set_restart_reason(PON_RESTART_REASON_RF);
+			__raw_writel(RF_MODE, restart_reason);
+		} else if (!strncmp(cmd, "ftm", 3)) {
+			qpnp_pon_set_restart_reason(PON_RESTART_REASON_FACTORY);
+			__raw_writel(FACTORY_MODE, restart_reason);
+		} else if (!strncmp(cmd, "kernel", 6)) {
+			qpnp_pon_set_restart_reason(PON_RESTART_REASON_KERNEL);
+			__raw_writel(KERNEL_MODE, restart_reason);
+		} else if (!strncmp(cmd, "modem", 5)) {
+			qpnp_pon_set_restart_reason(PON_RESTART_REASON_MODEM);
+			__raw_writel(MODEM_MODE, restart_reason);
+		} else if (!strncmp(cmd, "android", 7)) {
+			qpnp_pon_set_restart_reason(PON_RESTART_REASON_ANDROID);
+			__raw_writel(ANDROID_MODE, restart_reason);
+		} else if (!strncmp(cmd, "aging", 5)) {
+			qpnp_pon_set_restart_reason(PON_RESTART_REASON_AGING);
+			__raw_writel(AGING_MODE, restart_reason);
 		} else {
 			__raw_writel(0x77665501, restart_reason);
 		}
 	}
-
 	flush_cache_all();
 
 	/*outer_flush_all is not supported by 64bit kernel*/
@@ -663,6 +709,14 @@ static const struct of_device_id of_msm_restart_match[] = {
 	{},
 };
 MODULE_DEVICE_TABLE(of, of_msm_restart_match);
+
+#ifdef CONFIG_PANIC_FLUSH
+int oem_get_download_mode(void)
+{
+	return download_mode && (dload_type & SCM_DLOAD_FULLDUMP);
+}
+EXPORT_SYMBOL(oem_get_download_mode);
+#endif
 
 static struct platform_driver msm_restart_driver = {
 	.probe = msm_restart_probe,
