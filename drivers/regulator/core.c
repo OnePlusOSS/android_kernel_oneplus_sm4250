@@ -4208,6 +4208,7 @@ static void regulator_dev_release(struct device *dev)
 	kfree(rdev->constraints);
 	of_node_put(rdev->dev.of_node);
 	kfree(rdev);
+	rdev = NULL;
 }
 
 #ifdef CONFIG_DEBUG_FS

@@ -1,0 +1,76 @@
+/* add for audio bring up */
+/*
+&pil_adsp_mem {
+        reg = <0x0 0x53800000 0x0 0x2800000>;
+};
+
+&reserved_memory {
+		///delete-node/ &pil_ipa_fw_mem;
+		///delete-node/ &pil_ipa_gsi_mem;
+		///delete-node/ &pil_gpu_mem;
+                pil_ipa_fw_mem: ipa_fw_region@56000000 {
+                        compatible = "removed-dma-pool";
+                        no-map;
+                        reg = <0x0 0x56000000 0x0 0x10000>;
+                };
+
+                pil_ipa_gsi_mem: ipa_gsi_region@56010000 {
+                        compatible = "removed-dma-pool";
+                        no-map;
+                        reg = <0x0 0x56010000 0x0 0x5000>;
+                };
+
+                pil_gpu_mem: gpu_region@56015000 {
+                        compatible = "removed-dma-pool";
+                        no-map;
+                        reg = <0x0 0x56015000 0x0 0x2000>;
+                };
+};
+
+*/
+
+&qupv3_se2_i2c {
+        status = "ok";
+        tps61280@75 {
+                compatible = "ti,tps61280";
+                #address-cells = <1>;
+                #size-cells = <0>;
+                reg = <0x75>;
+                tps61280,chip_enable = <&tlmm 54 0x01>;
+                /*tps61280,chip_vsel = <&tlmm 52 0x01>;*/
+        };
+
+        aw87359@59 {
+                status = "ok";
+                compatible = "awinic,aw87359_pa";
+                reg = <0x59>;
+        };
+
+        aw87529_pa@58 {
+                status = "ok";
+                compatible = "awinic,aw87529_pa";
+                reg = <0x58>;
+                reset-gpio = <&tlmm 96 0>;
+        };
+
+};
+
+&bengal_snd {
+        qcom,wsa-max-devs = <0>;
+        qcom,wsa-devs = <0>;
+        qcom,msm-mbhc-hs-mic-max-threshold-mv = <2550>;
+        oplus,mbhc-headset-micbias-alwayon = <1>;
+};
+
+&wcd937x_codec {
+        qcom,cdc-micbias2-mv = <2700>;
+};
+
+
+&wsa881x_i2c_e {
+        status = "disabled";
+};
+
+&wsa881x_i2c_44 {
+        status = "disabled";
+};

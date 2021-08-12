@@ -142,6 +142,13 @@
 #define MISC_CHGR_TRIM_OPTIONS_REG		(MISC_BASE + 0x55)
 #define CMD_RBIAS_EN_BIT			BIT(2)
 
+/* Add for qc detect and detach */
+#define MISC_CHGR_DEAD_TIME_REG         (MISC_BASE + 0xC7)
+#define CMD_INC_TIME_BIT                        BIT(2)
+#define MISC_CHGR_CBOOT_TIME_REG                (MISC_BASE + 0xC4)
+
+#define MISC_CHGR_UNLOCK_REG            (MISC_BASE + 0xD0)
+
 #define MISC_ENG_SDCDC_RESERVE1_REG		(MISC_BASE + 0xC4)
 #define MINOFF_TIME_MASK			BIT(6)
 
@@ -178,6 +185,8 @@
 	 || (mode == POWER_SUPPLY_PL_USBIN_USBIN_EXT))
 
 #define PARALLEL_ENABLE_VOTER			"PARALLEL_ENABLE_VOTER"
+
+static int factory_test_lock;
 
 struct smb_chg_param {
 	const char	*name;
@@ -574,6 +583,7 @@ static enum power_supply_property smb1355_parallel_props[] = {
 	POWER_SUPPLY_PROP_CURRENT_MAX,
 	POWER_SUPPLY_PROP_SET_SHIP_MODE,
 	POWER_SUPPLY_PROP_DIE_HEALTH,
+	POWER_SUPPLY_PROP_SMB1355_TEST,
 };
 
 static int smb1355_get_prop_batt_charge_type(struct smb1355 *chip,
@@ -850,6 +860,9 @@ static int smb1355_parallel_get_prop(struct power_supply *psy,
 		/* Not in ship mode as long as device is active */
 		val->intval = 0;
 		break;
+        case POWER_SUPPLY_PROP_SMB1355_TEST:
+                val->intval = factory_test_lock;
+                break;
 	default:
 		pr_err_ratelimited("parallel psy get prop %d not supported\n",
 			prop);
@@ -988,14 +1001,16 @@ static int smb1355_parallel_set_prop(struct power_supply *psy,
 		rc = smb1355_set_parallel_charging(chip, (bool)val->intval);
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_MAX:
-		rc = smb1355_set_current_max(chip, val->intval);
+		if (factory_test_lock == 0)
+			rc = smb1355_set_current_max(chip, val->intval);
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
 		rc = smb1355_set_charge_param(chip, &chip->param.ov,
 						val->intval);
 		break;
 	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT_MAX:
-		rc = smb1355_set_charge_param(chip, &chip->param.fcc,
+		if (factory_test_lock == 0)
+			rc = smb1355_set_charge_param(chip, &chip->param.fcc,
 						val->intval);
 		break;
 	case POWER_SUPPLY_PROP_CONNECTOR_HEALTH:
@@ -1009,6 +1024,23 @@ static int smb1355_parallel_set_prop(struct power_supply *psy,
 			break;
 		rc = smb1355_clk_request(chip, false);
 		break;
+        case POWER_SUPPLY_PROP_SMB1355_TEST:
+                if (val->intval == 1) {
+                        factory_test_lock = 1;
+                        rc = smb1355_set_charge_param(chip, &chip->param.fcc, 1000000);
+                        rc = smb1355_set_charge_param(chip, &chip->param.usb_icl, 1000000);
+                        rc = smb1355_masked_write(chip, CHGR_CFG2_REG, CHG_EN_POLARITY_BIT | CHG_EN_SRC_BIT, 0);
+                        rc = smb1355_masked_write(chip, CHGR_CHARGING_ENABLE_CMD_REG,
+                                                        CHARGING_ENABLE_CMD_BIT, CHARGING_ENABLE_CMD_BIT);
+                } else if (val->intval == 0) {
+                        rc = smb1355_set_charge_param(chip, &chip->param.fcc, 0);
+                        rc = smb1355_set_charge_param(chip, &chip->param.usb_icl, 0);
+                        rc = smb1355_masked_write(chip, CHGR_CFG2_REG, CHG_EN_POLARITY_BIT | CHG_EN_SRC_BIT, 0);
+                        rc = smb1355_masked_write(chip, CHGR_CHARGING_ENABLE_CMD_REG, CHARGING_ENABLE_CMD_BIT, 0);
+                        factory_test_lock = 0;
+                }
+                pr_err("factory_test_lock = %d\n", factory_test_lock);
+                break;
 	default:
 		pr_debug("parallel power supply set prop %d not supported\n",
 			prop);
@@ -1024,6 +1056,7 @@ static int smb1355_parallel_prop_is_writeable(struct power_supply *psy,
 {
 	switch (prop) {
 	case POWER_SUPPLY_PROP_CONNECTOR_HEALTH:
+	case POWER_SUPPLY_PROP_SMB1355_TEST:
 		return 1;
 	default:
 		break;
@@ -1370,6 +1403,29 @@ static int smb1355_init_hw(struct smb1355 *chip)
 		pr_err("Couldn't configure tskin regs rc=%d\n", rc);
 		return rc;
 	}
+
+        /* 2020/08/17, Add for qc detect and detach and auto shutdown*/
+        rc = smb1355_write(chip,
+                        MISC_CHGR_UNLOCK_REG, 0xA5);
+        if (rc < 0) {
+                pr_err("Couldn't set MISC_CHGR_UNLOCK_REG rc=%d\n",
+                        rc);
+                //return rc;
+        }
+        rc = smb1355_write(chip,
+                        MISC_CHGR_DEAD_TIME_REG, 0x04);
+        if (rc < 0) {
+                pr_err("Couldn't set MISC_CHGR_DEAD_TIME_REG rc=%d\n",
+                        rc);
+                //return rc;
+        }
+        //smb1355_write(chip, MISC_CHGR_UNLOCK_REG, 0xA5);
+        rc = smb1355_masked_write(chip, MISC_CHGR_CBOOT_TIME_REG, 0x40, 0x0);
+        if (rc < 0) {
+                pr_err("Couldn't set MISC_CHGR_CBOOT_TIME_REG rc=%d\n",
+                        rc);
+                //return rc;
+        }
 
 	/* USBIN-USBIN configuration */
 	if (IS_USBIN(chip->dt.pl_mode)) {

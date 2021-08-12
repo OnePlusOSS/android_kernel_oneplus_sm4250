@@ -285,7 +285,14 @@ static int tsens2xxx_get_temp(struct tsens_sensor *sensor, int *temp)
 
 		} else {
 			pr_err("%s: tsens controller got reset\n", __func__);
-			BUG();
+			tmdev->trdy_fail_ctr++;
+			if (tmdev->trdy_fail_ctr >= 50) {
+				if (tmdev->ops->dbg)
+					tmdev->ops->dbg(tmdev, 0,
+						TSENS_DBG_LOG_BUS_ID_DATA,
+						 NULL);
+				BUG();
+			}
 		}
 		return -EAGAIN;
 	}
@@ -340,7 +347,7 @@ dbg:
 int tsens_2xxx_get_min_temp(struct tsens_sensor *sensor, int *temp)
 {
 	struct tsens_device *tmdev = NULL;
-	unsigned int code;
+	unsigned int code, ret, tsens_ret;
 	void __iomem *sensor_addr, *trdy;
 	int last_temp = 0, last_temp2 = 0, last_temp3 = 0, valid_bit;
 
@@ -360,10 +367,24 @@ int tsens_2xxx_get_min_temp(struct tsens_sensor *sensor, int *temp)
 			code, tmdev->trdy_fail_ctr);
 		tmdev->trdy_fail_ctr++;
 		if (tmdev->trdy_fail_ctr >= TSENS_MAX_READ_FAIL) {
+			struct scm_desc desc = { 0 };
 			if (tmdev->ops->dbg)
 				tmdev->ops->dbg(tmdev, 0,
 					TSENS_DBG_LOG_BUS_ID_DATA, NULL);
-			BUG();
+			/* Make an scm call to re-init TSENS */
+			ret = scm_call2(SCM_SIP_FNID(SCM_SVC_TSENS,
+							TSENS_INIT_ID), &desc);
+			if (ret) {
+				pr_err("%s: scm call failed %d\n", __func__, ret);
+				BUG();
+			}
+			tsens_ret = desc.ret[0];
+			if (tsens_ret) {
+				pr_err("%s: scm call failed to init tsens %d\n", __func__, tsens_ret);
+				BUG();
+			}
+			/* Notify thermal fwk */
+			queue_work(tmdev->tsens_reinit_work, &tmdev->therm_fwk_notify);
 		}
 		return -ENODATA;
 	}

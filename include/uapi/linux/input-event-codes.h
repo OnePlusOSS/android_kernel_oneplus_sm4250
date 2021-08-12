@@ -694,6 +694,12 @@
 #define KEY_MAX			0x2ff
 #define KEY_CNT			(KEY_MAX+1)
 
+/* zuoqiquan@BSP.CHG.Basic 2020/6/13 modify for rf cable monitor */
+#define KEY_RF_CABLE_IN0      0x2f0
+#define KEY_RF_CABLE_OUT0     0x2f1
+#define KEY_RF_CABLE_IN1      0x2f2
+#define KEY_RF_CABLE_OUT1     0x2f3
+
 /*
  * Relative axes
  */

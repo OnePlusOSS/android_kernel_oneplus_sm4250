@@ -14,6 +14,11 @@
 #include <linux/of_batterydata.h>
 #include <linux/power_supply.h>
 
+#ifdef T0_ERROR_BATT_SUPPORT
+bool is_t0_error_batt;
+EXPORT_SYMBOL_GPL(is_t0_error_batt);
+#endif
+
 static int of_batterydata_read_lut(const struct device_node *np,
 			int max_cols, int max_rows, int *ncols, int *nrows,
 			int *col_legend_data, int *row_legend_data,
@@ -318,6 +323,9 @@ struct device_node *of_batterydata_get_best_profile(
 	int delta = 0, best_delta = 0, best_id_kohm = 0, id_range_pct,
 		i = 0, rc = 0, limit = 0;
 	bool in_range = false;
+#ifdef T0_ERROR_BATT_SUPPORT
+        struct device_node *node_needed = NULL;
+#endif
 
 	/* read battery id range percentage for best profile */
 	rc = of_property_read_u32(batterydata_container_node,
@@ -351,6 +359,11 @@ struct device_node *of_batterydata_get_best_profile(
 			if (rc)
 				continue;
 			for (i = 0; i < batt_ids.num; i++) {
+#ifdef T0_ERROR_BATT_SUPPORT
+                                if (batt_ids.kohm[i] == 60)
+                                        node_needed = node;
+#endif
+
 				delta = abs(batt_ids.kohm[i] - batt_id_kohm);
 				limit = (batt_ids.kohm[i] * id_range_pct) / 100;
 				in_range = (delta <= limit);
@@ -370,6 +383,11 @@ struct device_node *of_batterydata_get_best_profile(
 	}
 
 	if (best_node == NULL) {
+#ifdef T0_ERROR_BATT_SUPPORT
+                pr_err("T0 error battery support, use specific battery data\n");
+                is_t0_error_batt = true;
+                return node_needed;
+#endif
 		pr_err("No battery data found\n");
 		return best_node;
 	}

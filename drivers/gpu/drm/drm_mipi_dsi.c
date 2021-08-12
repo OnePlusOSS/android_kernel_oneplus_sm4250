@@ -1058,8 +1058,28 @@ EXPORT_SYMBOL(mipi_dsi_dcs_set_tear_scanline);
 int mipi_dsi_dcs_set_display_brightness(struct mipi_dsi_device *dsi,
 					u16 brightness)
 {
-	u8 payload[2] = { brightness & 0xff, brightness >> 8 };
 	ssize_t err;
+	u8 payload[2] = {0};
+
+	if (strnstr(saved_command_line, "mdss_dsi_ili9881h_boe_video",
+		strlen(saved_command_line)) || strnstr(saved_command_line,
+		"mdss_dsi_ili9881h_90hz_boe_video", strlen(saved_command_line))
+		|| strnstr(saved_command_line, "mdss_dsi_ili9882n_90hz_video",
+		strlen(saved_command_line))) {
+
+		payload[0] = (brightness & 0x7ff) >> 7;
+		payload[1] = (brightness << 1) & 0xfe;
+		//printk("[lcm] This is ilitek, backlight uses bits 0xFFE!\n");
+	} else if (strnstr(saved_command_line, "mdss_dsi_nt36525b_inx_video",
+		strlen(saved_command_line))) {
+		payload[0] = (brightness & 0x7ff) >> 8;
+		payload[1] = brightness & 0xff;
+		//printk("[lcm] This is novatek, backlight uses bits 0x7FF!\n");
+
+	} else {
+		payload[0] = brightness >> 8;
+		payload[1] = brightness & 0xff;
+	}
 
 	err = mipi_dsi_dcs_write(dsi, MIPI_DCS_SET_DISPLAY_BRIGHTNESS,
 				 payload, sizeof(payload));

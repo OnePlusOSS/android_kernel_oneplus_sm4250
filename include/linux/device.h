@@ -1121,6 +1121,9 @@ struct device {
 	ANDROID_KABI_RESERVE(6);
 	ANDROID_KABI_RESERVE(7);
 	ANDROID_KABI_RESERVE(8);
+#ifdef CONFIG_CONTROL_CENTER
+	bool cc_marked;
+#endif
 };
 
 static inline struct device *kobj_to_dev(struct kobject *kobj)

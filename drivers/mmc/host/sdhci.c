@@ -51,6 +51,9 @@
 
 #define SDHCI_DBG_DUMP_RS_INTERVAL (10 * HZ)
 #define SDHCI_DBG_DUMP_RS_BURST 2
+//2020-9-12 Add for move card when inhibit error happend
+#define MMC_CARD_REMOVED (1<<4)
+
 
 static unsigned int debug_quirks = 0;
 static unsigned int debug_quirks2;
@@ -1371,6 +1374,9 @@ void sdhci_send_command(struct sdhci_host *host, struct mmc_command *cmd)
 				"Controller never released inhibit bit(s)\n");
 			sdhci_dumpregs(host);
 			cmd->error = -EIO;
+//2020-9-12 Add for move card when inhibit error happend
+			if (host->mmc->card && mmc_card_sd(host->mmc->card))
+				host->mmc->card->state |= MMC_CARD_REMOVED;
 			sdhci_finish_mrq(host, cmd->mrq);
 			return;
 		}

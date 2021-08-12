@@ -19,6 +19,10 @@
 extern struct dentry *blk_debugfs_root;
 #endif
 
+#ifdef CONFIG_ONEPLUS_HEALTHINFO
+extern unsigned long ufs_outstanding;
+#endif
+
 struct blk_flush_queue {
 	unsigned int		flush_queue_delayed:1;
 	unsigned int		flush_pending_idx:1;

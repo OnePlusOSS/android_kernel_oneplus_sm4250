@@ -46,6 +46,7 @@
 #include <soc/qcom/ramdump.h>
 #include "icnss_private.h"
 #include "icnss_qmi.h"
+#include <linux/oem/project_info.h>
 
 #define MAX_PROP_SIZE			32
 #define NUM_LOG_PAGES			10
@@ -66,6 +67,8 @@
 #define PROBE_TIMEOUT                 15000
 
 static struct icnss_priv *penv;
+static u32 fw_version;
+static u32 fw_version_ext;
 
 unsigned long quirks = ICNSS_QUIRKS_DEFAULT;
 
@@ -1166,6 +1169,26 @@ static int icnss_driver_event_server_exit(void *data)
 
 	return 0;
 }
+/* Initial and show wlan firmware build version */
+void cnss_set_fw_version(u32 version, u32 ext)
+{
+	fw_version = version;
+	fw_version_ext = ext;
+}
+EXPORT_SYMBOL(cnss_set_fw_version);
+
+static ssize_t cnss_version_information_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	if (!penv)
+		return -ENODEV;
+	return scnprintf(buf, PAGE_SIZE, "%u.%u.%u.%u.%u\n",
+		 (fw_version & 0xf0000000) >> 28,
+	(fw_version & 0xf000000) >> 24, (fw_version & 0xf00000) >> 20,
+	fw_version & 0x7fff, (fw_version_ext & 0xf0000000) >> 28);
+}
+
+static DEVICE_ATTR_RO(cnss_version_information);
 
 static int icnss_call_driver_probe(struct icnss_priv *priv)
 {
@@ -3811,6 +3834,7 @@ static int icnss_probe(struct platform_device *pdev)
 	int ret = 0;
 	struct device *dev = &pdev->dev;
 	struct icnss_priv *priv;
+	char *project_name = NULL;
 
 	if (penv) {
 		icnss_pr_err("Driver is already initialized\n");
@@ -3878,6 +3902,24 @@ static int icnss_probe(struct platform_device *pdev)
 
 	penv = priv;
 
+	device_create_file(&penv->pdev->dev,
+		 &dev_attr_cnss_version_information);
+
+	project_name = get_project_name();
+	if (project_name) {
+		if (!strcmp(project_name, "20882")) {
+			push_component_info(WCN, "WCN3988", "QualComm");
+		} else if (!strcmp(project_name, "20883")) {
+			push_component_info(WCN, "WCN3950", "QualComm");
+		} else {
+			icnss_pr_err("Err name %s Write 3988\n", project_name);
+			push_component_info(WCN, "WCN3988", "QualComm");
+		}
+	} else {
+		icnss_pr_err("project_name is NULL. Write 3988 anyway\n");
+		push_component_info(WCN, "WCN3988", "QualComm");
+	}
+
 	init_completion(&priv->unblock_shutdown);
 
 	icnss_pr_info("Platform driver probed successfully\n");
@@ -3903,6 +3945,9 @@ static int icnss_remove(struct platform_device *pdev)
 	icnss_unregister_power_supply_notifier(penv);
 
 	icnss_debugfs_destroy(penv);
+
+	device_remove_file(&penv->pdev->dev,
+		 &dev_attr_cnss_version_information);
 
 	icnss_sysfs_destroy(penv);
 

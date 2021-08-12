@@ -571,7 +571,11 @@ static int qusb_phy_init(struct usb_phy *phy)
 	 * and try to read EFUSE value only once i.e. not every USB
 	 * cable connect case.
 	 */
+#ifdef OEM_TARGET_PRODUCT_BILLIE2
+	if (qphy->tune2_efuse_reg && !qphy->tune2 && !qphy->qusb_phy_init_seq) {
+#else
 	if (qphy->tune2_efuse_reg && !qphy->tune2) {
+#endif
 		if (!qphy->tune2_val)
 			qusb_phy_get_tune2_param(qphy);
 

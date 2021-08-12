@@ -1492,7 +1492,7 @@ compress_again:
 		atomic64_inc(&zram->stats.writestall);
 		entry = zram_entry_alloc(zram, comp_len,
 				GFP_NOIO | __GFP_HIGHMEM |
-				__GFP_MOVABLE | __GFP_CMA);
+				__GFP_MOVABLE | __GFP_CMA | GFP_ATOMIC | ___GFP_HIGH_ATOMIC_ZRAM);
 		if (entry)
 			goto compress_again;
 		return -ENOMEM;
@@ -2084,7 +2084,7 @@ static int zram_add(void)
 		blk_queue_max_write_zeroes_sectors(zram->disk->queue, UINT_MAX);
 
 	zram->disk->queue->backing_dev_info->capabilities |=
-			(BDI_CAP_STABLE_WRITES | BDI_CAP_SYNCHRONOUS_IO);
+			(BDI_CAP_STABLE_WRITES);
 	disk_to_dev(zram->disk)->groups = zram_disk_attr_groups;
 	add_disk(zram->disk);
 

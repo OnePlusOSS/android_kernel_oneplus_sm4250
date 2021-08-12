@@ -323,6 +323,9 @@ static ssize_t qpnp_vib_store_activate(struct device *dev,
 	if (val != 0 && val != 1)
 		return count;
 
+	if ((val == 0) && (chip->vib_play_ms <= QPNP_VIB_MIN_PLAY_MS))
+		return count;
+
 	mutex_lock(&chip->lock);
 	hrtimer_cancel(&chip->stop_timer);
 	chip->state = val;
@@ -364,7 +367,8 @@ static ssize_t qpnp_vib_store_vmax(struct device *dev,
 	mutex_lock(&chip->lock);
 	chip->vmax_uV = data;
 	mutex_unlock(&chip->lock);
-	return ret;
+	return count;
+	//return ret;
 }
 
 static struct device_attribute qpnp_vib_attrs[] = {

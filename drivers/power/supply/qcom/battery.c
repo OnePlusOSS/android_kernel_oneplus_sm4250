@@ -1994,7 +1994,7 @@ int qcom_batt_init(struct charger_param *chg_param)
 
 	qcom_batt_create_debugfs(chip);
 
-	chip->slave_pct = 50;
+	chip->slave_pct = 60;
 	chip->chg_param = chg_param;
 	pl_config_init(chip, chg_param->smb_version);
 	chip->restricted_current = DEFAULT_RESTRICTED_CURRENT_UA;

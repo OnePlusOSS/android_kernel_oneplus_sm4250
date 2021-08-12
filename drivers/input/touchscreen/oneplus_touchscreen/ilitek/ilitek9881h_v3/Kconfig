@@ -1,0 +1,5 @@
+config TOUCHPANEL_ILITEK_ILITEK9881H_V3
+#	default y
+	bool "TP ilitek ilitek9881h IC enable or not for ONEPLUS"
+	---help---
+	say Y to enable driver for Touchpanel using ilitek ilitek9881h

@@ -1,0 +1,16 @@
+/dts-v1/;
+/plugin/;
+
+#include "../qcom/bengal-qrd-overlay.dts"
+#include "bengal-oem-common-qrd.dtsi"
+#include "billie2.dtsi"
+/* DTBO: project Special overlay */
+
+/ {
+        model = "Qualcomm Technologies, Inc. Bengal OEM QRD";
+        compatible = "qcom,bengal-qrd", "qcom,bengal", "qcom,qrd";
+        qcom,board-id = <0x1000B 0>;
+        oem,project-id = < 12 >;
+        oem,hw-id = < 1 2 3 4 5 6 7 >;
+};
+

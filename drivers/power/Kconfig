@@ -1,3 +1,62 @@
+config ONEPLUS_PMI632_CHARGER
+	tristate "CONFIG_ONEPLUS_PMI632_CHARGER driver"
+	help
+	  Enables support for the oneplus charging framework
+config ONEPLUS_PMI632_CHARGER
+	tristate "CONFIG_ONEPLUS_PMI632_CHARGER driver"
+	help
+	  Enables support for the oneplus charging framework
+
+config ONEPLUS_SHORT_C_BATT_CHECK
+	bool "ONEPLUS batt short "
+	help
+	  Say Y here to declare ONEPLUS batt short
+
+config ONEPLUS_RTC_DET_SUPPORT
+	tristate "ONEPLUS RTC DET SUPPORT"
+	default n
+	help
+	  Say Y to include support
+
+config ONEPLUS_CHECK_CHARGERID_VOLT
+	tristate "ONEPLUS CHECK CHARGERID VOLT"
+	default n
+	help
+	  Say Y to include support
+
+config ONEPLUS_SHIP_MODE_SUPPORT
+	tristate "ONEPLUS_SHIP_MODE_SUPPORT"
+	default n
+	help
+	  Say Y to include support
+
+config ONEPLUS_CALL_MODE_SUPPORT
+	tristate "ONEPLUS_CALL_MODE_SUPPORT"
+	default n
+	help
+	  Say Y to include support
+
+config ONEPLUS_SHORT_IC_CHECK
+	bool "ONEPLUS short ic"
+	help
+	  Say Y here to declare ONEPLUS batt short
+
+config ONEPLUS_SHORT_HW_CHECK
+	bool "ONEPLUS batt HW SHORT "
+	help
+	  Say Y here to declare charging system is on MTK
+
+config ONEPLUS_CHIP_SOC_NODE
+	bool "ONEPLUS chip soc node"
+	help
+	  Say Y to include support
+
+config ONEPLUS_SMART_CHARGER_SUPPORT
+	bool "ONEPLUS smart charge support"
+	help
+	  Say Y to include support
+
+source "drivers/power/oneplus/Kconfig"
 source "drivers/power/avs/Kconfig"
 source "drivers/power/reset/Kconfig"
 source "drivers/power/supply/Kconfig"

@@ -25,6 +25,9 @@ void __sched down_read(struct rw_semaphore *sem)
 
 	LOCK_CONTENDED(sem, __down_read_trylock, __down_read);
 	rwsem_set_reader_owned(sem);
+#ifdef CONFIG_UXCHAIN_V2
+	uxchain_rwsem_down(sem);
+#endif
 }
 
 EXPORT_SYMBOL(down_read);
@@ -40,6 +43,9 @@ int __sched down_read_killable(struct rw_semaphore *sem)
 	}
 
 	rwsem_set_reader_owned(sem);
+#ifdef CONFIG_UXCHAIN_V2
+	uxchain_rwsem_down(sem);
+#endif
 	return 0;
 }
 
@@ -55,6 +61,9 @@ int down_read_trylock(struct rw_semaphore *sem)
 	if (ret == 1) {
 		rwsem_acquire_read(&sem->dep_map, 0, 1, _RET_IP_);
 		rwsem_set_reader_owned(sem);
+#ifdef CONFIG_UXCHAIN_V2
+		uxchain_rwsem_down(sem);
+#endif
 	}
 	return ret;
 }
@@ -71,6 +80,9 @@ void __sched down_write(struct rw_semaphore *sem)
 
 	LOCK_CONTENDED(sem, __down_write_trylock, __down_write);
 	rwsem_set_owner(sem);
+#ifdef CONFIG_UXCHAIN_V2
+	uxchain_rwsem_down(sem);
+#endif
 }
 
 EXPORT_SYMBOL(down_write);
@@ -89,6 +101,9 @@ int __sched down_write_killable(struct rw_semaphore *sem)
 	}
 
 	rwsem_set_owner(sem);
+#ifdef CONFIG_UXCHAIN_V2
+	uxchain_rwsem_down(sem);
+#endif
 	return 0;
 }
 
@@ -104,6 +119,9 @@ int down_write_trylock(struct rw_semaphore *sem)
 	if (ret == 1) {
 		rwsem_acquire(&sem->dep_map, 0, 1, _RET_IP_);
 		rwsem_set_owner(sem);
+#ifdef CONFIG_UXCHAIN_V2
+		uxchain_rwsem_down(sem);
+#endif
 	}
 
 	return ret;
@@ -120,6 +138,9 @@ void up_read(struct rw_semaphore *sem)
 	DEBUG_RWSEMS_WARN_ON(sem->owner != RWSEM_READER_OWNED);
 
 	__up_read(sem);
+#ifdef CONFIG_UXCHAIN_V2
+	uxchain_rwsem_up(sem);
+#endif
 }
 
 EXPORT_SYMBOL(up_read);
@@ -134,6 +155,9 @@ void up_write(struct rw_semaphore *sem)
 
 	rwsem_clear_owner(sem);
 	__up_write(sem);
+#ifdef CONFIG_UXCHAIN_V2
+	uxchain_rwsem_up(sem);
+#endif
 }
 
 EXPORT_SYMBOL(up_write);
@@ -161,6 +185,10 @@ void down_read_nested(struct rw_semaphore *sem, int subclass)
 
 	LOCK_CONTENDED(sem, __down_read_trylock, __down_read);
 	rwsem_set_reader_owned(sem);
+#ifdef CONFIG_UXCHAIN_V2
+	uxchain_rwsem_down(sem);
+#endif
+
 }
 
 EXPORT_SYMBOL(down_read_nested);
@@ -172,6 +200,10 @@ void _down_write_nest_lock(struct rw_semaphore *sem, struct lockdep_map *nest)
 
 	LOCK_CONTENDED(sem, __down_write_trylock, __down_write);
 	rwsem_set_owner(sem);
+#ifdef CONFIG_UXCHAIN_V2
+	uxchain_rwsem_down(sem);
+#endif
+
 }
 
 EXPORT_SYMBOL(_down_write_nest_lock);
@@ -182,6 +214,10 @@ void down_read_non_owner(struct rw_semaphore *sem)
 
 	__down_read(sem);
 	rwsem_set_reader_owned(sem);
+#ifdef CONFIG_UXCHAIN_V2
+	uxchain_rwsem_down(sem);
+#endif
+
 }
 
 EXPORT_SYMBOL(down_read_non_owner);
@@ -193,6 +229,10 @@ void down_write_nested(struct rw_semaphore *sem, int subclass)
 
 	LOCK_CONTENDED(sem, __down_write_trylock, __down_write);
 	rwsem_set_owner(sem);
+#ifdef CONFIG_UXCHAIN_V2
+	uxchain_rwsem_down(sem);
+#endif
+
 }
 
 EXPORT_SYMBOL(down_write_nested);
@@ -208,6 +248,10 @@ int __sched down_write_killable_nested(struct rw_semaphore *sem, int subclass)
 	}
 
 	rwsem_set_owner(sem);
+#ifdef CONFIG_UXCHAIN_V2
+	uxchain_rwsem_down(sem);
+#endif
+
 	return 0;
 }
 
@@ -217,6 +261,9 @@ void up_read_non_owner(struct rw_semaphore *sem)
 {
 	DEBUG_RWSEMS_WARN_ON(sem->owner != RWSEM_READER_OWNED);
 	__up_read(sem);
+#ifdef CONFIG_UXCHAIN_V2
+	uxchain_rwsem_up(sem);
+#endif
 }
 
 EXPORT_SYMBOL(up_read_non_owner);

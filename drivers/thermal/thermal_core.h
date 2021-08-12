@@ -136,6 +136,9 @@ static inline int thermal_gov_low_limits_register(void) { return 0; }
 static inline void thermal_gov_low_limits_unregister(void) {}
 #endif /* CONFIG_THERMAL_GOV_LOW_LIMITS */
 
+
+int get_charging_therm_temp(void);
+
 /* device tree support */
 #ifdef CONFIG_THERMAL_OF
 int of_parse_thermal_zones(void);

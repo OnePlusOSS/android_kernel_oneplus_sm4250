@@ -18,9 +18,10 @@
 #include <linux/mm.h>
 #include <linux/of.h>
 #include <linux/uaccess.h>
+#include <linux/sysfs.h>
+#include <linux/kobject.h>
 
-
-#define RPM_MASTERS_BUF_LEN 400
+#define RPM_MASTERS_BUF_LEN 1024
 
 #define SNPRINTF(buf, size, format, ...) \
 	do { \
@@ -42,6 +43,12 @@
 	 prvdata->master_names[a])
 
 #define GET_FIELD(a) ((strnstr(#a, ".", 80) + 1))
+
+struct msm_rpm_master_stats_platform_data *rpm_pdata;
+struct rpm_master_stats_prv_data {
+	struct kobj_attribute ka;
+	struct kobject *kobj;
+};
 
 struct msm_rpm_master_stats_platform_data {
 	phys_addr_t phys_addr_base;
@@ -273,6 +280,109 @@ static int msm_rpm_master_copy_stats(
 	return RPM_MASTERS_BUF_LEN - count;
 }
 
+static int msm_rpm_master_copy_complete_stats(
+		struct msm_rpm_master_stats_private_data *prvdata)
+{
+	struct msm_rpm_master_stats record;
+	struct msm_rpm_master_stats_platform_data *pdata;
+	int master_cnt = 0;
+	int count, j = 0;
+	char *buf;
+
+	/* Iterate possible number of masters */
+	if (master_cnt > prvdata->num_masters - 1) {
+		master_cnt = 0;
+		return 0;
+	}
+
+	pdata = prvdata->platform_data;
+	count = RPM_MASTERS_BUF_LEN;
+	buf = prvdata->buf;
+
+	for (master_cnt = 0; master_cnt < prvdata->num_masters; master_cnt++) {
+		if (prvdata->platform_data->version == 2) {
+			SNPRINTF(buf, count, "%s\n",
+					GET_MASTER_NAME(master_cnt, prvdata));
+
+			record.xo_last_entered_at =
+				readq_relaxed(prvdata->reg_base +
+				(master_cnt * pdata->master_offset +
+				offsetof(struct msm_rpm_master_stats,
+				xo_last_entered_at)));
+
+			SNPRINTF(buf, count, "\t%s:0x%llX\n",
+				GET_FIELD(record.xo_last_entered_at),
+				record.xo_last_entered_at);
+
+			record.xo_last_exited_at =
+				readq_relaxed(prvdata->reg_base +
+				(master_cnt * pdata->master_offset +
+				offsetof(struct msm_rpm_master_stats,
+				xo_last_exited_at)));
+
+			SNPRINTF(buf, count, "\t%s:0x%llX\n",
+				GET_FIELD(record.xo_last_exited_at),
+				record.xo_last_exited_at);
+
+			record.xo_accumulated_duration =
+					readq_relaxed(prvdata->reg_base +
+					(master_cnt * pdata->master_offset +
+					offsetof(struct msm_rpm_master_stats,
+					xo_accumulated_duration)));
+
+			SNPRINTF(buf, count, "\t%s:0x%llX\n",
+				GET_FIELD(record.xo_accumulated_duration),
+				record.xo_accumulated_duration);
+
+			record.last_sleep_transition_duration =
+					readl_relaxed(prvdata->reg_base +
+					(master_cnt * pdata->master_offset +
+					offsetof(struct msm_rpm_master_stats,
+					last_sleep_transition_duration)));
+
+			SNPRINTF(buf, count, "\t%s:0x%x\n", GET_FIELD
+				(record.last_sleep_transition_duration),
+				record.last_sleep_transition_duration);
+
+			record.last_wake_transition_duration =
+					readl_relaxed(prvdata->reg_base +
+					(master_cnt * pdata->master_offset +
+					offsetof(struct msm_rpm_master_stats,
+					last_wake_transition_duration)));
+
+			SNPRINTF(buf, count, "\t%s:0x%x\n",
+				GET_FIELD(record.last_wake_transition_duration),
+				record.last_wake_transition_duration);
+
+			record.xo_count =
+					readl_relaxed(prvdata->reg_base +
+					(master_cnt * pdata->master_offset +
+					offsetof(struct msm_rpm_master_stats,
+					xo_count)));
+
+			SNPRINTF(buf, count, "\t%s:0x%x\n",
+				GET_FIELD(record.xo_count),
+				record.xo_count);
+		} else {
+			SNPRINTF(buf, count, "%s\n",
+					GET_MASTER_NAME(master_cnt, prvdata));
+
+			record.numshutdowns = readl_relaxed(prvdata->reg_base +
+					(master_cnt * pdata->master_offset)
+					+ 0x0);
+
+			SNPRINTF(buf, count, "\t%s:0x%0x\n",
+				GET_FIELD(record.numshutdowns),
+				record.numshutdowns);
+		}
+
+		if (j == (BITS_PER_LONG - 1))
+			SNPRINTF(buf, count, "\t\tcore%d\n", j);
+	}
+
+	return RPM_MASTERS_BUF_LEN - count;
+}
+
 static ssize_t msm_rpm_master_stats_file_read(struct file *file,
 				char __user *bufu, size_t count, loff_t *ppos)
 {
@@ -419,21 +529,71 @@ err:
 	return NULL;
 }
 
+ssize_t msm_rpm_master_stats_show(struct kobject *kobj,
+					struct kobj_attribute *attr, char *buf)
+{
+	struct msm_rpm_master_stats_private_data *prvdata;
+	int ret = 0;
+
+	mutex_lock(&msm_rpm_master_stats_mutex);
+
+	prvdata =
+		kzalloc(sizeof(struct msm_rpm_master_stats_private_data),
+			GFP_KERNEL);
+
+	if (!prvdata) {
+		ret = -EINVAL;
+		goto exit;
+	}
+
+	if (!rpm_pdata) {
+		ret = -EINVAL;
+		goto exit;
+	}
+
+	prvdata->reg_base = ioremap(rpm_pdata->phys_addr_base,
+						rpm_pdata->phys_size);
+	if (!prvdata->reg_base) {
+		kfree(prvdata);
+		prvdata = NULL;
+		pr_err("%s: ERROR could not ioremap start=%pa, len=%u\n",
+			__func__, &rpm_pdata->phys_addr_base,
+			rpm_pdata->phys_size);
+		ret = -ENOMEM;
+		goto exit;
+	}
+
+	prvdata->len = 0;
+	prvdata->num_masters = rpm_pdata->num_masters;
+	prvdata->master_names = rpm_pdata->masters;
+	prvdata->platform_data = rpm_pdata;
+	prvdata->len = msm_rpm_master_copy_complete_stats(prvdata);
+
+	mutex_unlock(&msm_rpm_master_stats_mutex);
+	return snprintf(buf, sizeof(prvdata->buf), "%s", prvdata->buf);
+exit:
+	mutex_unlock(&msm_rpm_master_stats_mutex);
+	pr_err("[%s]:rpm master stats show fail.", __func__);
+	return ret;
+}
+
 static  int msm_rpm_master_stats_probe(struct platform_device *pdev)
 {
 	struct dentry *dent;
-	struct msm_rpm_master_stats_platform_data *pdata;
+	struct rpm_master_stats_prv_data *prvdata = NULL;
+	struct kobject *rpm_master_stats_kobj = NULL;
 	struct resource *res = NULL;
+	int ret = -ENOMEM;
 
 	if (!pdev)
 		return -EINVAL;
 
 	if (pdev->dev.of_node)
-		pdata = msm_rpm_master_populate_pdata(&pdev->dev);
+		rpm_pdata = msm_rpm_master_populate_pdata(&pdev->dev);
 	else
-		pdata = pdev->dev.platform_data;
+		rpm_pdata = pdev->dev.platform_data;
 
-	if (!pdata) {
+	if (!rpm_pdata) {
 		dev_err(&pdev->dev, "%s: Unable to get pdata\n", __func__);
 		return -ENOMEM;
 	}
@@ -447,29 +607,70 @@ static  int msm_rpm_master_stats_probe(struct platform_device *pdev)
 		return -ENXIO;
 	}
 
-	pdata->phys_addr_base = res->start;
-	pdata->phys_size = resource_size(res);
+	rpm_pdata->phys_addr_base = res->start;
+	rpm_pdata->phys_size = resource_size(res);
 
-	dent = debugfs_create_file("rpm_master_stats", 0444, NULL,
-					pdata, &msm_rpm_master_stats_fops);
+	if (IS_ENABLED(CONFIG_DEBUG_FS)) {
+		dent = debugfs_create_file("rpm_master_stats",
+			0444, NULL,
+			rpm_pdata, &msm_rpm_master_stats_fops);
 
-	if (!dent) {
-		dev_err(&pdev->dev, "%s: ERROR debugfs_create_file failed\n",
-								__func__);
-		return -ENOMEM;
+		if (!dent) {
+			dev_err(&pdev->dev, "%s: ERROR debugfs_create_file failed\n",
+					__func__);
+			return -ENOMEM;
+		}
+
+		platform_set_drvdata(pdev, dent);
 	}
 
-	platform_set_drvdata(pdev, dent);
+	prvdata = devm_kzalloc(&pdev->dev, sizeof(*prvdata), GFP_KERNEL);
+	if (!prvdata)
+		return ret;
+	if (rpm_master_stats_kobj == NULL) {
+		rpm_master_stats_kobj = kobject_create_and_add("rpm",
+								power_kobj);
+		if (!rpm_master_stats_kobj)
+			pr_err("[%s]:Init kobj failed.", __func__);
+	}
+	prvdata->kobj = rpm_master_stats_kobj;
+	sysfs_attr_init(&prvdata->ka.attr);
+	prvdata->ka.attr.mode = 0444;
+	prvdata->ka.attr.name = "master_stats";
+	prvdata->ka.show = msm_rpm_master_stats_show;
+	prvdata->ka.store = NULL;
+	ret = sysfs_create_file(prvdata->kobj, &prvdata->ka.attr);
+	if (ret) {
+		pr_err("sysfs_create_file failed\n");
+		goto fail_sysfs;
+	}
+
 	return 0;
+
+fail_sysfs:
+	kobject_put(prvdata->kobj);
+	return ret;
 }
 
 static int msm_rpm_master_stats_remove(struct platform_device *pdev)
 {
 	struct dentry *dent;
+	struct rpm_master_stats_prv_data *prvdata = NULL;
+	struct kobject *rpm_master_stats_kobj = NULL;
 
-	dent = platform_get_drvdata(pdev);
-	debugfs_remove(dent);
-	platform_set_drvdata(pdev, NULL);
+	prvdata->kobj = rpm_master_stats_kobj;
+	sysfs_attr_init(&prvdata->ka.attr);
+	prvdata->ka.attr.mode = 0444;
+	prvdata->ka.attr.name = "master_stats";
+	prvdata->ka.show = msm_rpm_master_stats_show;
+	prvdata->ka.store = NULL;
+	sysfs_remove_file(prvdata->kobj, &prvdata->ka.attr);
+	kobject_put(prvdata->kobj);
+	if (IS_ENABLED(CONFIG_DEBUG_FS)) {
+		dent = platform_get_drvdata(pdev);
+		debugfs_remove(dent);
+		platform_set_drvdata(pdev, NULL);
+	}
 	return 0;
 }
 

@@ -267,6 +267,9 @@ config ZONE_DMA32
 config HAVE_GENERIC_GUP
 	def_bool y
 
+config ONEPLUS_KEVENT_UPLOAD
+	def_bool y
+
 config SMP
 	def_bool y
 

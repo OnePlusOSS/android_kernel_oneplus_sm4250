@@ -275,6 +275,7 @@ static int refill_swap_slots_cache(struct swap_slots_cache *cache)
 	return cache->nr;
 }
 
+int disable_swap_slot = 1;
 int free_swap_slot(swp_entry_t entry)
 {
 	struct swap_slots_cache *cache;
@@ -282,7 +283,7 @@ int free_swap_slot(swp_entry_t entry)
 
 	si = swp_swap_info(entry);
 	cache = raw_cpu_ptr(&swp_slots);
-	if ((si && !(si->flags & SWP_SYNCHRONOUS_IO)) &&
+	if (!disable_swap_slot && !(si->flags & SWP_SYNCHRONOUS_IO) &&
 				use_swap_slot_cache && cache->slots_ret) {
 		spin_lock_irq(&cache->free_lock);
 		/* Swap slots cache may be deactivated before acquiring lock */
@@ -353,6 +354,9 @@ repeat:
 			goto out;
 	}
 
+	/* CONFIG_MEMPLUS add start by bin.zhong@ASTI */
+	__set_memplus_entry(entry, page_private(page));
+	/* add end */
 	get_swap_pages(1, &entry, 1);
 out:
 	if (mem_cgroup_try_charge_swap(page, entry)) {

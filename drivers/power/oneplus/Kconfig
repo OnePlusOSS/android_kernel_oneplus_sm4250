@@ -1,0 +1,43 @@
+menuconfig ONEPLUS_CHARGER
+	bool "ONEPLUS charging system"
+	depends on I2C
+	select REGMAP_I2C
+	help
+	  Say Y here to enable ONEPLUS charging system support
+
+if ONEPLUS_CHARGER
+config ONEPLUS_CHARGER_MTK
+	bool "ONEPLUS charger on MTK"
+	help
+	  Say Y here to declare charging system is on MTK
+
+config ONEPLUS_SHORT_C_BATT_CHECK
+	bool "ONEPLUS batt short "
+	help
+	  Say Y here to declare ONEPLUS batt short
+
+config ONEPLUS_STANDARD_BATTERY_CHECK_ADC
+	bool "ONEPLUS Official Standard Battery check by ADC"
+	help
+	  Say Y here to support Official Standard Battery check by ADC
+
+config ONEPLUS_SHORT_IC_CHECK
+	bool "ONEPLUS short ic"
+	help
+	  Say Y here to declare ONEPLUS batt short
+
+config ONEPLUS_SHORT_HW_CHECK
+	bool "ONEPLUS batt HW SHORT "
+	help
+	  Say Y here to declare charging system is on MTK
+
+config ONEPLUS_SHORT_USERSPACE
+	bool "ONEPLUS batt userspace"
+	help
+	  Say Y to include support
+
+config ONEPLUS_CHIP_SOC_NODE
+	bool "ONEPLUS chip soc node"
+	help
+	  Say Y to include support
+endif #ONEPLUS_CHARGER
